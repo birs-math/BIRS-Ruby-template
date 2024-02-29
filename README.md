@@ -124,7 +124,7 @@ end
 
 Create a unicorn config `myapp/config/unicorn.rb`
 ```ruby
-i# Heavily inspired by GitLab:
+# Heavily inspired by GitLab:
 # https://github.com/gitlabhq/gitlabhq/blob/master/config/unicorn.rb.example
 
 worker_processes ENV['WORKER_PROCESSES'].to_i
@@ -168,8 +168,10 @@ end
 
 Make sure we allow connections from ourselves in `myapp/config/environments/development.rb`
 ```ruby
+  $ vi myapp/config/environments/development.rb
   ...
- +config.hosts << myapp
+ +  config.hosts << myapp
+  end
 ```
 
 Create an example environment variable file dot-env.example
@@ -239,7 +241,7 @@ workshops/vendor/bundle/
 workshops/tmp/
 ```
 
-Create a simple reverse-proxy config for nginx
+Create a simple reverse-proxy config for nginx, the host in hte `proxypass` stanza should match whatevern you use for the service name in `compose.yml`
 ```bash
 # reverse-proxy.conf
 
@@ -248,7 +250,7 @@ server {
     server_name example.org;
 
     location / {
-        proxy_pass http://myapp:3000;
+        proxy_pass http://app:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
@@ -337,9 +339,13 @@ $ docker compose run app rake db:migrate
 ```
 
 That's it for now, commit
+```bash
+$ git add -A
+$ git commit -m "Second stage complete app initialized"
+```
 
 ## TODO
 
-[ ] Formalize production and development image differences
-[ ] Replace unicorn with puma
-[ ] Tidy up environment variables - particularly the DB stuff
+ * [ ] Formalize production and development image differences
+ * [ ] Replace unicorn with puma
+ * [ ] Tidy up environment variables - particularly the DB stuff
