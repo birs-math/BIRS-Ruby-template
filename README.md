@@ -319,7 +319,7 @@ volumes:
 Copy the sample environment to `.env`, ready for docker-compose. Without having rake available yet, we will need to generate aour own random value
 ```bash
 $ NEW_SECRET=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 64; echo)
-$ sed "s/SECRET_KEY=.*/SECRET_KEY=${NEW_SECRET}/g" dot-env.example > .env
+$ sed "s/SECRET_TOKEN=.*/SECRET_TOKEN=${NEW_SECRET}/g" dot-env.example > .env
 ```
 
 Our app currently doesn't have a `Gemfile.lock` which is required for our build. We can generate one as so
