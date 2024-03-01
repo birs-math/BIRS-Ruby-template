@@ -344,8 +344,72 @@ $ git add -A
 $ git commit -m "Second stage complete app initialized"
 ```
 
+Assuming you have some node components in the front end, we'll create a stub
+`package.json` and `yarn.lock`, by connecting to a development environment
+(which has our app volume mounted) and adding jquery.
+```bash
+$ curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg -o /root/yarn-pubkey.gpg && apt-key add /root/yarn-pubkey.gpg
+$ echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
+$ apt-get update && apt-get install -y --no-install-recommends libvips pkg-config nodejs yarn
+
+$ docker compose run --rm app bash
+#> yarn init
+question name (rails): myapp
+...
+
+#> yarn add jquery
+```
+Quitting the container, this should have created a `package.json` and a
+`yarn.lock` at the top level of `myapp`. Add those to your repository and commit
+them. We can now update the `Dockerfile` for the app.
+```dockerfile
+# Dockerfile development version
+ARG RUBY_VERSION=3.1.2
+FROM registry.docker.com/library/ruby:$RUBY_VERSION AS base
+
+WORKDIR /rails
+
+FROM base as build
+
+# Install gem and yarn build dependencies
+RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg -o /root/yarn-pubkey.gpg && apt-key add /root/yarn-pubkey.gpg
+RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
+RUN apt-get update && apt-get install -y --no-install-recommends libvips pkg-config nodejs yarn
+
+# Install gems
+COPY Gemfile Gemfile.lock ./
+
+RUN bundle install --jobs=3 --retry=3 && \
+   rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
+    bundle exec bootsnap precompile --gemfile app/ lib/
+
+# Copy application code
+COPY . .
+
+# Install npm packages
+COPY package.json yarn.lock ./
+
+RUN yarn install --frozen-lockfile
+
+# Final target image
+FROM base
+
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y curl libsqlite3-0 libvips && \
+    rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+COPY --from=build /usr/local/bundle /usr/local/bundle
+COPY --from=build /rails /rails
+
+ENTRYPOINT ["/rails/bin/docker-entrypoint"]
+
+CMD ["bundle", "exec", "unicorn", "-c", "config/unicorn.rb"]
+```
+
+
 ## TODO
 
  * [ ] Formalize production and development image differences
+ * [ ] Slim the image
  * [ ] Replace unicorn with puma
  * [ ] Tidy up environment variables - particularly the DB stuff

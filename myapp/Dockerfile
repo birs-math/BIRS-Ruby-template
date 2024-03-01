@@ -6,7 +6,6 @@ WORKDIR /rails
 
 FROM base as build
 
-
 # Install gem and yarn build dependencies
 RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg -o /root/yarn-pubkey.gpg && apt-key add /root/yarn-pubkey.gpg
 RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
@@ -15,17 +14,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends libvips pkg-con
 # Install gems
 COPY Gemfile Gemfile.lock ./
 
-RUN bundle install && \
+RUN bundle install --jobs=3 --retry=3 && \
    rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
-    bundle exec bootsnap precompile --gemfile
+    bundle exec bootsnap precompile --gemfile app/ lib/
 
 # Copy application code
 COPY . .
-RUN yarn install
 
-# Precompile bootsnap code for faster boot times
-RUN bundle exec bootsnap precompile app/ lib/
+# Install npm packages
+COPY package.json yarn.lock ./
 
+RUN yarn install --frozen-lockfile
+
+# Final target image
 FROM base
 
 RUN apt-get update -qq && \
